@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}ขายหน้าร้าน (POS){% endblock %}
+
+{% block content %}
+<div class="pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-cash-register"></i> ขายหน้าร้าน (Point of Sale)</h1>
+</div>
+
+<div class="row">
+    <div class="col-lg-7">
+        <div class="mb-3">
+            <label for="product-search" class="form-label">ค้นหาสินค้า (ชื่อ หรือ SKU)</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                <input type="text" id="product-search" class="form-control" placeholder="พิมพ์เพื่อค้นหา...">
+            </div>
+            <div id="search-results" class="list-group mt-1 position-absolute w-100" style="z-index: 1000;"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                รายการสินค้า (ตะกร้า)
+            </div>
+            <div class="card-body">
+                <table class="table" id="cart-table">
+                    <thead>
+                        <tr>
+                            <th>สินค้า</th>
+                            <th class="text-center" style="width: 120px;">จำนวน</th>
+                            <th class="text-end">ราคา/หน่วย</th>
+                            <th class="text-end">ราคารวม</th>
+                            <th style="width: 50px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">สรุปยอดขาย</h5>
+                <form method="POST">
+                    {{ form.csrf_token }}
+                    {{ form.cart_items }}
+                    <div class="mb-3">
+                        {{ form.customer.label(class="form-label") }}
+                        {{ form.customer(class="form-select") }}
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between fs-5 mb-2">
+                        <span>ยอดรวม:</span>
+                        <strong id="total-amount">0.00 บาท</strong>
+                    </div>
+                    <div class="d-grid">
+                        {{ form.submit(class="btn btn-success btn-lg") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('product-search');
+        const searchResults = document.getElementById('search-results');
+        const cartTableBody = document.querySelector('#cart-table tbody');
+        const totalAmountEl = document.getElementById('total-amount');
+        const cartItemsInput = document.getElementById('cart_items');
+
+        let cart = {};
+
+        // Search for products
+        searchInput.addEventListener('keyup', async function() {
+            const query = this.value;
+            if (query.length < 2) {
+                searchResults.innerHTML = '';
+                return;
+            }
+            const response = await fetch(`{{ url_for('inventory.search_products') }}?q=${query}`);
+            const products = await response.json();
+            
+            searchResults.innerHTML = '';
+            products.forEach(p => {
+                const item = document.createElement('a');
+                item.href = '#';
+                item.className = 'list-group-item list-group-item-action';
+                item.textContent = `${p.name} (คงเหลือ: ${p.stock})`;
+                item.dataset.product = JSON.stringify(p);
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    addToCart(p);
+                    searchInput.value = '';
+                    searchResults.innerHTML = '';
+                });
+                searchResults.appendChild(item);
+            });
+        });
+
+        function addToCart(product) {
+            if (cart[product.id]) {
+                cart[product.id].qty++;
+            } else {
+                cart[product.id] = {
+                    id: product.id,
+                    name: product.name,
+                    price: product.price,
+                    qty: 1
+                };
+            }
+            renderCart();
+        }
+
+        function renderCart() {
+            cartTableBody.innerHTML = '';
+            let total = 0;
+
+            for (const id in cart) {
+                const item = cart[id];
+                const row = document.createElement('tr');
+                const itemTotal = item.qty * item.price;
+                total += itemTotal;
+
+                row.innerHTML = `
+                    <td>${item.name}</td>
+                    <td class="text-center">${item.qty}</td>
+                    <td class="text-end">${item.price.toFixed(2)}</td>
+                    <td class="text-end">${itemTotal.toFixed(2)}</td>
+                    <td><button class="btn btn-sm btn-outline-danger btn-remove" data-id="${id}">&times;</button></td>
+                `;
+                cartTableBody.appendChild(row);
+            }
+            
+            totalAmountEl.textContent = `${total.toFixed(2)} บาท`;
+            cartItemsInput.value = JSON.stringify(Object.values(cart));
+        }
+
+        cartTableBody.addEventListener('click', function(e){
+            if(e.target.classList.contains('btn-remove')) {
+                const id = e.target.dataset.id;
+                delete cart[id];
+                renderCart();
+            }
+        });
+
+    });
+</script>
+{% endblock %}

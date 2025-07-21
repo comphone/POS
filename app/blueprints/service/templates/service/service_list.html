@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}จัดการงานซ่อม{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">รายการงานซ่อม</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{{ url_for('service.add_job') }}" class="btn btn-info text-white">
+            <i class="fas fa-plus"></i> เปิดใบงานซ่อมใหม่
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th scope="col">Job No.</th>
+                    <th scope="col">ชื่องาน</th>
+                    <th scope="col">ลูกค้า</th>
+                    <th scope="col">สถานะ</th>
+                    <th scope="col">วันที่สร้าง</th>
+                    <th scope="col">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for job in jobs %}
+                <tr>
+                    <td>{{ job.job_number }}</td>
+                    <td>{{ job.title }}</td>
+                    <td>{{ job.customer.name }}</td>
+                    <td><span class="badge bg-secondary">{{ job.status.value }}</span></td>
+                    <td>{{ job.created_at.strftime('%d/%m/%Y') }}</td>
+                    <td>
+                        <a href="{{ url_for('service.job_detail', job_id=job.id) }}" class="btn btn-sm btn-primary">
+                            <i class="fas fa-eye"></i> ดูรายละเอียด
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center">ยังไม่มีงานซ่อมในระบบ</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

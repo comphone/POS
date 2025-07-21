@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}จัดการลูกค้า{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">รายชื่อลูกค้า</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{{ url_for('customer.add_customer') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> เพิ่มลูกค้าใหม่
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">ชื่อ-นามสกุล</th>
+                    <th scope="col">เบอร์โทรศัพท์</th>
+                    <th scope="col">อีเมล</th>
+                    <th scope="col">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for customer in customers %}
+                <tr>
+                    <th scope="row">{{ loop.index }}</th>
+                    <td>{{ customer.name }}</td>
+                    <td>{{ customer.phone or '-' }}</td>
+                    <td>{{ customer.email or '-' }}</td>
+                    <td>
+                        <a href="{{ url_for('customer.edit_customer', id=customer.id) }}" class="btn btn-sm btn-warning">
+                            <i class="fas fa-edit"></i> แก้ไข
+                        </a>
+                        <!-- Delete button can be added later -->
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="text-center">ยังไม่มีข้อมูลลูกค้าในระบบ</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
