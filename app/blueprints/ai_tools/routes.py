@@ -1,5 +1,6 @@
 from flask import jsonify
 from flask_login import login_required
+# [แก้ไข] Import Blueprint object จาก __init__.py เข้ามาใช้งาน
 from . import ai_tools_bp
 from app import db
 from app.models import ServiceJob
@@ -15,7 +16,6 @@ def get_job_history(job_id):
     if not job:
         return jsonify({"error": "Job not found"}), 404
 
-    # รวบรวมประวัติทั้งหมด
     history = []
     # ดึงข้อมูลจาก relationship 'updates' ที่เราสร้างไว้ใน model
     for update in job.updates:

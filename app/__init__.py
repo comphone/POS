@@ -44,7 +44,7 @@ def create_app(config_name='dev'):
             current_year=datetime.now(timezone.utc).year
         )
 
-    # --- Register Blueprints ---
+    # --- Register Blueprints (ตรวจสอบให้แน่ใจว่าไม่มีการลงทะเบียนซ้ำ) ---
     from .blueprints.core import core_bp
     app.register_blueprint(core_bp)
     
@@ -69,7 +69,6 @@ def create_app(config_name='dev'):
     from .blueprints.linebot import linebot_bp
     from .blueprints.linebot.routes import handler as linebot_handler
     
-    # ตั้งค่า Channel Secret ให้กับ handler ที่ import เข้ามา
     if app.config['LINE_CHANNEL_SECRET']:
         linebot_handler.channel_secret = app.config['LINE_CHANNEL_SECRET']
     app.register_blueprint(linebot_bp, url_prefix='/linebot')
