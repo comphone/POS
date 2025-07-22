@@ -9,3 +9,4 @@ wtforms-sqlalchemy
 line-bot-sdk
 gunicorn
 psycopg2-binary
+fpdf2
