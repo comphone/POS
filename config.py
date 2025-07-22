@@ -4,34 +4,35 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 
 class Config:
     """
-    Base configuration class.
+    คลาส Configuration พื้นฐาน
     """
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'a-super-secret-key-for-testing-only'
-    WTF_CSRF_SECRET_KEY = os.environ.get('WTF_CSRF_SECRET_KEY') or 'a-super-secret-csrf-key-for-testing'
+    # ดึงค่า Secret Key จาก Environment Variable เสมอ
+    # หากไม่พบ จะใช้ค่า default สำหรับการพัฒนาเท่านั้น
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'a-default-secret-key-for-dev'
+    WTF_CSRF_SECRET_KEY = os.environ.get('WTF_CSRF_SECRET_KEY') or 'a-default-csrf-key-for-dev'
     
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    # LINE Bot Configuration
-    LINE_CHANNEL_SECRET = os.environ.get('LINE_CHANNEL_SECRET') or 'YOUR_CHANNEL_SECRET'
-    LINE_CHANNEL_ACCESS_TOKEN = os.environ.get('LINE_CHANNEL_ACCESS_TOKEN') or 'YOUR_CHANNEL_ACCESS_TOKEN'
+    # การตั้งค่า LINE Bot
+    LINE_CHANNEL_SECRET = os.environ.get('LINE_CHANNEL_SECRET')
+    LINE_CHANNEL_ACCESS_TOKEN = os.environ.get('LINE_CHANNEL_ACCESS_TOKEN')
 
 class DevelopmentConfig(Config):
     """
-    Development configuration.
+    การตั้งค่าสำหรับโหมดพัฒนา (Development)
     """
     DEBUG = True
-    # ในโหมด dev, ถ้าไม่มี DATABASE_URL ให้ใช้ไฟล์ app.db แทน
+    # ในโหมด dev, ถ้าไม่มี DATABASE_URL ใน .env ให้ใช้ไฟล์ app.db แทน
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
         'sqlite:///' + os.path.join(basedir, 'app.db')
 
 class ProductionConfig(Config):
     """
-    Production configuration.
+    การตั้งค่าสำหรับโหมดใช้งานจริง (Production)
     """
     DEBUG = False
-    # สำหรับ Production, เราคาดหวังว่า DATABASE_URL จะต้องถูกตั้งค่าไว้เสมอ
+    # สำหรับ Production, เราคาดหวังว่า DATABASE_URL จะต้องถูกตั้งค่าไว้ใน Environment Variable เสมอ
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
-    # [แก้ไข] เราจะย้ายการตรวจสอบไปไว้ใน __init__.py แทนเพื่อความยืดหยุ่น
 
 config_by_name = dict(
     dev=DevelopmentConfig,

@@ -20,11 +20,10 @@ login_manager.login_message_category = 'info'
 def create_app(config_name='dev'):
     app = Flask(__name__)
     
-    # โหลด Config ตามชื่อที่ระบุ
     config_obj = config_by_name[config_name]
     app.config.from_object(config_obj)
 
-    # [เพิ่ม] ตรวจสอบ DATABASE_URL เฉพาะเมื่ออยู่ในโหมด prod
+    # ตรวจสอบ DATABASE_URL เฉพาะเมื่ออยู่ในโหมด prod
     if config_name == 'prod' and not app.config['SQLALCHEMY_DATABASE_URI']:
         raise ValueError("No DATABASE_URL set for production environment in your .env file")
     
@@ -68,13 +67,20 @@ def create_app(config_name='dev'):
     app.register_blueprint(accounting_bp, url_prefix='/accounting')
 
     from .blueprints.linebot import linebot_bp
+    from .blueprints.linebot.routes import handler as linebot_handler
+    
+    # ตั้งค่า Channel Secret ให้กับ handler ที่ import เข้ามา
+    if app.config['LINE_CHANNEL_SECRET']:
+        linebot_handler.channel_secret = app.config['LINE_CHANNEL_SECRET']
     app.register_blueprint(linebot_bp, url_prefix='/linebot')
 
+    from .blueprints.ai_tools import ai_tools_bp
+    app.register_blueprint(ai_tools_bp, url_prefix='/ai_tools')
+
+
     with app.app_context():
-        # สร้างตารางทั้งหมด (ถ้ายังไม่มี)
         db.create_all()
 
-        # สร้าง User เริ่มต้น (ถ้ายังไม่มี)
         if not models.User.query.filter_by(email='admin@example.com').first():
             print("Creating a default admin user...")
             admin_user = models.User(
