@@ -3,12 +3,11 @@ from flask_login import login_required
 from . import settings_bp
 from app import db
 from app.models import SystemSettings
-# [เพิ่ม] Import decorator ที่เราสร้างขึ้น
 from app.decorators import admin_required
 
 @settings_bp.route('/', methods=['GET', 'POST'])
 @login_required
-@admin_required  # <--- แปะ "ยาม" ไว้ที่นี่
+@admin_required
 def index():
     if request.method == 'POST':
         for key, value in request.form.items():

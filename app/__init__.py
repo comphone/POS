@@ -4,6 +4,7 @@ from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
 from datetime import datetime, timezone
+from apscheduler.schedulers.background import BackgroundScheduler
 
 from config import config_by_name
 
@@ -11,6 +12,7 @@ db = SQLAlchemy()
 login_manager = LoginManager()
 migrate = Migrate()
 csrf = CSRFProtect()
+scheduler = BackgroundScheduler(daemon=True)
 
 login_manager.login_view = 'auth.login'
 login_manager.login_message = 'กรุณาเข้าสู่ระบบเพื่อเข้าถึงหน้านี้'
@@ -100,5 +102,9 @@ def create_app(config_name='dev'):
             db.session.add(admin_user)
             db.session.commit()
             print("Default admin user created.")
+        
+        if not scheduler.running:
+            # Add scheduled jobs here in the future
+            scheduler.start()
 
     return app
