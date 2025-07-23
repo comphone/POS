@@ -23,7 +23,6 @@ GOOGLE_TASKS_LIST_ID = os.environ.get('GOOGLE_TASKS_LIST_ID', '@default')
 
 # --- Helper Functions (เหมือนเดิม) ---
 def parse_customer_info_from_notes(notes):
-    # ... (โค้ดส่วนนี้เหมือนเดิมทุกประการ) ...
     info = {'name': '', 'phone': '', 'address': ''}
     if not notes: return info
     name_match = re.search(r"ลูกค้า:\s*(.*)", notes, re.IGNORECASE)
@@ -35,7 +34,6 @@ def parse_customer_info_from_notes(notes):
     return info
 
 def parse_tech_report_from_notes(notes):
-    # ... (โค้ดส่วนนี้เหมือนเดิมทุกประการ) ...
     if not notes: return [], ""
     report_blocks = re.findall(r"--- TECH_REPORT_START ---\s*\n(.*?)\n--- TECH_REPORT_END ---", notes, re.DOTALL)
     history = []
