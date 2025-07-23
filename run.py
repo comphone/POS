@@ -1,9 +1,13 @@
 import os
 from app import create_app
+from dotenv import load_dotenv
 
-# บังคับให้โปรแกรมรันในโหมด 'dev' เสมอเมื่อใช้ไฟล์นี้
-# สำหรับ Production ให้ตั้งค่า FLASK_CONFIG='prod' ใน Environment Variable แทน
-config_name = os.getenv('FLASK_CONFIG') or 'dev'
+# โหลดค่าจากไฟล์ .env เข้าสู่ environment variables
+load_dotenv()
+
+# [แก้ไข] บังคับให้โปรแกรมรันในโหมด 'dev' เสมอเมื่อใช้ไฟล์นี้
+# นี่คือการแก้ไขที่สำคัญที่สุดสำหรับปัญหาของคุณ
+config_name = 'dev'
 
 # สร้างแอปพลิเคชันโดยใช้ Application Factory
 app = create_app(config_name)
