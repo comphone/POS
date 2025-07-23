@@ -1,4 +1,4 @@
-คู่มือ: การใช้งาน Service Account Key บน Render.comเอกสารนี้คือขั้นตอนทั้งหมดในการนำ Service Account Key ที่คุณเพิ่งสร้าง ไปตั้งค่าและใช้งานบน Render.com เพื่อให้สคริปต์ย้ายข้อมูล (Data Migration) สามารถทำงานได้สำเร็จขั้นตอนที่ 1: แชร์สิทธิ์ให้ "บัญชีหุ่นยนต์" (สำคัญมาก)ตอนนี้คุณมี "บัญชีผู้ใช้สำหรับหุ่นยนต์" แล้ว แต่หุ่นยนต์ตัวนี้ยังไม่มีสิทธิ์เข้าถึงข้อมูล Google Tasks และ Google Drive ของคุณ เราต้องทำการ "แชร์" สิทธิ์ให้มันก่อน เหมือนกับที่คุณแชร์ไฟล์ให้เพื่อนร่วมงานครับคัดลอกอีเมลของ Service Account: จากไฟล์ comphone-service-app.json ที่คุณส่งมา อีเมลของ Service Account ของคุณคือ:comphone-pos@comphone-service-app.iam.gserviceaccount.comแชร์ Google Tasks:เปิด Google Tasks ของคุณที่ด้านบนของรายการ Task ของคุณ คลิกที่เมนู ... แล้วเลือก "Share list"นำอีเมลของ Service Account (จากข้อ 1) ไปวางในช่อง "Add editors" แล้วกดแชร์แชร์ Google Drive Folder:ไปที่ Google Drive ของคุณคลิกขวาที่โฟลเดอร์หลักที่คุณใช้เก็บไฟล์แนบของงานซ่อม (โฟลเดอร์ที่มี ID ตรงกับ GOOGLE_DRIVE_FOLDER_ID ของคุณ)เลือก Share > Shareนำอีเมลของ Service Account (จากข้อ 1) ไปวางในช่อง "Add people and groups", ตั้งสิทธิ์ให้เป็น Editor, แล้วกด Sendขั้นตอนที่ 2: ตั้งค่า Environment Variable บน Render.comเราจะนำ "เนื้อหา" ของไฟล์กุญแจ .json ทั้งหมด ไปตั้งเป็นค่าที่เป็นความลับบนเซิร์ฟเวอร์ของ Renderเปิดไฟล์ comphone-service-app.json ที่คุณดาวน์โหลดมาด้วยโปรแกรม Text Editor (เช่น Notepad, VS Code)คัดลอก (Copy) เนื้อหาทั้งหมด ที่อยู่ในไฟล์นั้น (ตั้งแต่ { ตัวแรก จนถึง } ตัวสุดท้าย)ไปที่ Dashboard ของ Web Service ของคุณบน Render.comไปที่เมนู "Environment"คลิก "+ Add Environment Variable" แล้วสร้างตัวแปรใหม่:Key: GOOGLE_SERVICE_ACCOUNT_JSONValue: วาง (Paste) เนื้อหาไฟล์ .json ทั้งหมด ที่คุณคัดลอกมาลงในช่องนี้กด "Save Changes"ขั้นตอนที่ 3: อัปเดตสคริปต์ migrate_from_google_tasks.pyผมได้เขียนสคริปต์เวอร์ชันใหม่ให้แล้ว โค้ดนี้ถูกออกแบบมาให้อ่านค่าจาก GOOGLE_SERVICE_ACCOUNT_JSON ที่เราเพิ่งตั้งค่าไป เพื่อใช้ในการยืนยันตัวตนแทนวิธีเก่าที่ต้องใช้เบราว์เซอร์ครับimport os
+import os
 import json
 import re
 from datetime import datetime
@@ -89,18 +89,13 @@ def migrate_data():
     all_tasks = get_all_google_tasks(tasks_service)
     print(f"      Found {len(all_tasks)} tasks to migrate.")
 
-    app = create_app(os.getenv('FLASK_CONFIG') or 'dev')
+    app = create_app(os.getenv('FLASK_CONFIG') or 'prod') # Use 'prod' config on server
     with app.app_context():
-        print("[3/5] Preparing local database...")
+        print("[3/5] Preparing database...")
         default_user = User.query.filter_by(role='ADMIN').first()
         if not default_user:
-            print("[ERROR] Default admin user not found. Creating one...")
-            # This part is a fallback, ideally the app should be run once to create the user
-            admin_user = User(username='admin', email='admin@example.com', first_name='Admin', last_name='User', role='ADMIN')
-            admin_user.set_password('password')
-            db.session.add(admin_user)
-            db.session.commit()
-            default_user = admin_user
+            print("[ERROR] Default admin user not found. Please ensure the app has run once to create it.")
+            return
         print("      Database ready.")
 
         print("[4/5] Processing and inserting data...")
