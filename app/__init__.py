@@ -44,7 +44,7 @@ def create_app(config_name='dev'):
             current_year=datetime.now(timezone.utc).year
         )
 
-    # --- Register Blueprints (ตรวจสอบให้แน่ใจว่าไม่มีการลงทะเบียนซ้ำ) ---
+    # --- Register Blueprints ---
     from .blueprints.core import core_bp
     app.register_blueprint(core_bp)
     
@@ -65,6 +65,10 @@ def create_app(config_name='dev'):
 
     from .blueprints.accounting import accounting_bp
     app.register_blueprint(accounting_bp, url_prefix='/accounting')
+
+    # [เพิ่ม] ลงทะเบียน Technician Report Blueprint
+    from .blueprints.tech_report import tech_report_bp
+    app.register_blueprint(tech_report_bp, url_prefix='/tech_report')
 
     from .blueprints.linebot import linebot_bp
     from .blueprints.linebot.routes import handler as linebot_handler
