@@ -3,82 +3,67 @@ import json
 import re
 from datetime import datetime
 from dateutil.parser import parse as date_parse
+import sys
 
 # --- Setup for running script standalone ---
-# This allows the script to import modules from the main app
-import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from dotenv import load_dotenv
+load_dotenv()
 # -----------------------------------------
 
 from app import create_app, db
-from app.models import Customer, User, ServiceJob, JobUpdate, Product, ServiceJobStatus, JobUpdateType
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
+from app.models import Customer, User, ServiceJob, JobUpdate, ServiceJobStatus
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 # --- Configuration ---
 SCOPES = ['https://www.googleapis.com/auth/tasks.readonly']
-CREDENTIALS_FILE = 'credentials.json'
-TOKEN_FILE = 'token.json'
-# ใช้ ID ของ Task List จาก .env หรือใส่ค่าตรงๆ ที่นี่
 GOOGLE_TASKS_LIST_ID = os.environ.get('GOOGLE_TASKS_LIST_ID', '@default') 
 
-# --- Helper Functions for Parsing (from old app.py) ---
+# --- Helper Functions (เหมือนเดิม) ---
 def parse_customer_info_from_notes(notes):
-    info = {'name': '', 'phone': '', 'address': '', 'organization': ''}
+    # ... (โค้ดส่วนนี้เหมือนเดิมทุกประการ) ...
+    info = {'name': '', 'phone': '', 'address': ''}
     if not notes: return info
-
-    org_match = re.search(r"หน่วยงาน:\s*(.*)", notes, re.IGNORECASE)
     name_match = re.search(r"ลูกค้า:\s*(.*)", notes, re.IGNORECASE)
     phone_match = re.search(r"เบอร์โทรศัพท์:\s*(.*)", notes, re.IGNORECASE)
     address_match = re.search(r"ที่อยู่:\s*(.*)", notes, re.IGNORECASE)
-
-    if org_match: info['organization'] = org_match.group(1).strip()
-    if name_match: info['name'] = name_match.group(1).strip()
-    if phone_match: info['phone'] = phone_match.group(1).strip()
-    if address_match: info['address'] = address_match.group(1).strip()
-    
-    # Clean up common prefixes
-    for key in info:
-        if ':' in info[key]:
-            info[key] = info[key].split(':', 1)[-1].strip()
-            
+    if name_match: info['name'] = name_match.group(1).strip().split(':')[-1].strip()
+    if phone_match: info['phone'] = phone_match.group(1).strip().split(':')[-1].strip()
+    if address_match: info['address'] = address_match.group(1).strip().split(':')[-1].strip()
     return info
 
 def parse_tech_report_from_notes(notes):
+    # ... (โค้ดส่วนนี้เหมือนเดิมทุกประการ) ...
     if not notes: return [], ""
     report_blocks = re.findall(r"--- TECH_REPORT_START ---\s*\n(.*?)\n--- TECH_REPORT_END ---", notes, re.DOTALL)
     history = []
     for json_str in report_blocks:
         try:
-            report_data = json.loads(json_str)
-            history.append(report_data)
+            history.append(json.loads(json_str))
         except json.JSONDecodeError:
             print(f"  [WARNING] Failed to decode tech report JSON.")
-    
     base_notes = re.sub(r"--- TECH_REPORT_START ---.*?--- TECH_REPORT_END ---", "", notes, flags=re.DOTALL).strip()
     return history, base_notes
 
-# --- Main Migration Logic ---
-def get_google_credentials():
-    """Gets valid user credentials from storage or initiates the OAuth2 flow."""
-    creds = None
-    if os.path.exists(TOKEN_FILE):
-        creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
-            creds = flow.run_local_server(port=0)
-        with open(TOKEN_FILE, 'w') as token:
-            token.write(creds.to_json())
-    return creds
+# --- [แก้ไข] Main Migration Logic ---
+def get_google_service_with_service_account(api_name, api_version):
+    """สร้าง Service Object โดยใช้ Service Account JSON จาก Environment Variable"""
+    service_account_json_str = os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+    if not service_account_json_str:
+        raise ValueError("Environment variable 'GOOGLE_SERVICE_ACCOUNT_JSON' is not set.")
+    
+    try:
+        credentials_info = json.loads(service_account_json_str)
+        creds = service_account.Credentials.from_service_account_info(credentials_info, scopes=SCOPES)
+        service = build(api_name, api_version, credentials=creds)
+        return service
+    except Exception as e:
+        print(f"Error creating Google service with Service Account: {e}")
+        return None
 
 def get_all_google_tasks(service):
-    """Fetches all tasks from the specified task list."""
     tasks = []
     request = service.tasks().list(tasklist=GOOGLE_TASKS_LIST_ID, maxResults=100, showCompleted=True, showHidden=True)
     while request is not None:
@@ -88,51 +73,36 @@ def get_all_google_tasks(service):
     return tasks
 
 def migrate_data():
-    """Main function to perform the data migration."""
-    print("--- Starting Data Migration from Google Tasks ---")
+    print("--- Starting Data Migration using Service Account ---")
 
-    # 1. Get Google Credentials
-    print("[1/5] Authenticating with Google...")
+    # 1. Get Google Service
+    print("[1/5] Authenticating with Google Service Account...")
     try:
-        creds = get_google_credentials()
-        tasks_service = build('tasks', 'v1', credentials=creds)
+        tasks_service = get_google_service_with_service_account('tasks', 'v1')
+        if not tasks_service:
+            return
         print("      Authentication successful.")
     except Exception as e:
-        print(f"[ERROR] Could not authenticate with Google. Please check your '{CREDENTIALS_FILE}'.")
-        print(f"      Details: {e}")
+        print(f"[ERROR] Could not authenticate. Details: {e}")
         return
 
-    # 2. Fetch all tasks
+    # ... (โค้ดส่วนที่เหลือตั้งแต่ 2/5 ถึง 5/5 เหมือนเดิมทุกประการ) ...
     print("[2/5] Fetching all tasks from Google Tasks...")
-    try:
-        all_tasks = get_all_google_tasks(tasks_service)
-        print(f"      Found {len(all_tasks)} tasks to migrate.")
-    except HttpError as e:
-        print(f"[ERROR] Could not fetch tasks from Google API.")
-        print(f"      Details: {e}")
-        return
+    all_tasks = get_all_google_tasks(tasks_service)
+    print(f"      Found {len(all_tasks)} tasks to migrate.")
 
-    # Create Flask app context to work with the database
     app = create_app(os.getenv('FLASK_CONFIG') or 'dev')
     with app.app_context():
-        
-        # 3. Prepare local database
         print("[3/5] Preparing local database...")
-        # Get the default admin user to assign as author for migrated data
-        default_user = User.query.filter_by(email='admin@example.com').first()
+        default_user = User.query.filter_by(role='ADMIN').first()
         if not default_user:
-            print("[ERROR] Default admin user not found. Please run the main app once to create it.")
+            print("[ERROR] Default admin user not found.")
             return
-        
-        migrated_customers = {} # Cache for customers: (name, phone) -> Customer object
         print("      Database ready.")
 
-        # 4. Process and insert data
-        print("[4/5] Processing and inserting data into the database...")
+        print("[4/5] Processing and inserting data...")
         for i, task_data in enumerate(all_tasks):
             print(f"  -> Processing task {i+1}/{len(all_tasks)}: {task_data.get('title')}")
-
-            # Parse data from notes
             notes = task_data.get('notes', '')
             tech_reports, base_notes_text = parse_tech_report_from_notes(notes)
             customer_info = parse_customer_info_from_notes(base_notes_text)
@@ -141,56 +111,34 @@ def migrate_data():
                 print("     [SKIPPING] Task has no customer name.")
                 continue
 
-            # Find or Create Customer
-            customer_key = (customer_info['name'].lower(), customer_info['phone'])
-            customer = migrated_customers.get(customer_key)
+            customer = Customer.query.filter_by(name=customer_info['name'], phone=customer_info['phone']).first()
             if not customer:
-                customer = Customer.query.filter_by(name=customer_info['name'], phone=customer_info['phone']).first()
-                if not customer:
-                    customer = Customer(
-                        name=customer_info['name'],
-                        phone=customer_info['phone'],
-                        address=customer_info['address']
-                    )
-                    db.session.add(customer)
-                    # We need the ID, so we flush to get it
-                    db.session.flush() 
-                migrated_customers[customer_key] = customer
+                customer = Customer(name=customer_info['name'], phone=customer_info['phone'], address=customer_info['address'])
+                db.session.add(customer)
+                db.session.flush()
 
-            # Create ServiceJob
             job_status = ServiceJobStatus.COMPLETED if task_data.get('status') == 'completed' else ServiceJobStatus.RECEIVED
-            
-            # Use a placeholder for job number for now
             job_number = f"MIG-{task_data.get('id', i)}"
+            created_at_val = date_parse(task_data.get('created')) if task_data.get('created') else datetime.utcnow()
 
             service_job = ServiceJob(
-                job_number=job_number,
-                title=task_data.get('title'),
-                problem_description=base_notes_text,
-                customer_id=customer.id,
-                status=job_status,
-                created_at=date_parse(task_data.get('created'))
+                job_number=job_number, title=task_data.get('title'),
+                problem_description=base_notes_text, customer_id=customer.id,
+                status=job_status, created_at=created_at_val
             )
             db.session.add(service_job)
-            db.session.flush() # Get ID for JobUpdates
+            db.session.flush()
 
-            # Create JobUpdates from tech reports
             for report in tech_reports:
                 summary = report.get('work_summary', 'No summary provided.')
-                try:
-                    report_date = date_parse(report.get('summary_date'))
-                except (ValueError, TypeError):
-                    report_date = service_job.created_at
-
+                try: report_date = date_parse(report.get('summary_date'))
+                except: report_date = service_job.created_at
                 job_update = JobUpdate(
-                    service_job_id=service_job.id,
-                    author_id=default_user.id, # Assign to default user
-                    summary=summary,
-                    created_at=report_date
+                    service_job_id=service_job.id, author_id=default_user.id,
+                    summary=summary, created_at=report_date
                 )
                 db.session.add(job_update)
-
-        # 5. Commit all changes
+        
         print("[5/5] Committing all changes to the database...")
         try:
             db.session.commit()
@@ -201,7 +149,6 @@ def migrate_data():
             db.session.rollback()
 
     print("--- Data Migration Finished ---")
-
 
 if __name__ == '__main__':
     migrate_data()

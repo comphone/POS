@@ -1,10 +1,17 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    </head>
+    <!-- ... (head content) ... -->
+</head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('core.dashboard') }}">
+                <i class="fas fa-cogs"></i> Comphone System
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     {% if current_user.is_authenticated %}
@@ -12,22 +19,42 @@
                             <a class="nav-link" href="{{ url_for('core.dashboard') }}">Dashboard</a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link bg-success text-white rounded px-3" href="{{ url_for('pos.index') }}"><i class="fas fa-cash-register me-1"></i>ขายหน้าร้าน (POS)</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('service.list_jobs') }}">จัดการงานซ่อม</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('customer.list_customers') }}">จัดการลูกค้า</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('inventory.list_products') }}">จัดการสินค้า</a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('accounting.sale_history') }}">ประวัติการขาย</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('tech_report.report') }}">รายงานช่าง</a>
                         </li>
+                        <!-- [แก้ไข] เพิ่มเงื่อนไขการตรวจสอบสิทธิ์ -->
+                        {% if current_user.is_admin %}
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('settings.index') }}"><i class="fas fa-cog"></i> ตั้งค่า</a>
                         </li>
+                        {% endif %}
                     {% endif %}
                 </ul>
-                </div>
+                <ul class="navbar-nav ms-auto">
+                    <!-- ... (user menu) ... -->
+                </ul>
+            </div>
         </div>
     </nav>
 
     <main class="container main-content">
-        </main>
+        <!-- ... (flash messages and content block) ... -->
+    </main>
 
-    </body>
+    <!-- ... (footer and scripts) ... -->
+</body>
 </html>
