@@ -66,3 +66,5 @@ node_modules/
 # Others
 static/*.log
 *.pid
+"comphone-service-app.json" 
+"comphone-service-app.json" 
