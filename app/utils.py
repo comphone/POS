@@ -1,102 +1,60 @@
+"""
+Utility functions for the application, including Google API helpers.
+"""
 import os
-from fpdf import FPDF
+import json
+from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 from flask import current_app
-from datetime import datetime
 
-class PDF(FPDF):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # เพิ่มฟอนต์ภาษาไทย
-        font_path = os.path.join(current_app.static_folder, 'fonts', 'Sarabun-Regular.ttf')
-        if os.path.exists(font_path):
-            self.add_font('Sarabun', '', font_path, uni=True)
-        else:
-            # Fallback font if Sarabun is not found
-            self.add_font('helvetica', '', 'helvetica.pl')
+# --- Google API Configuration ---
+SCOPES = ['https://www.googleapis.com/auth/tasks', 'https://www.googleapis.com/auth/drive']
+CREDENTIALS_FILE = 'credentials.json'
+TOKEN_FILE = 'token.json'
 
-    def header(self):
-        self.set_font('Sarabun', '', 16)
-        self.cell(0, 10, 'ใบเสร็จรับเงิน / Receipt', 0, 1, 'C')
-        self.ln(10)
-
-    def footer(self):
-        self.set_y(-15)
-        self.set_font('Sarabun', '', 8)
-        self.cell(0, 10, f'หน้า {self.page_no()}', 0, 0, 'C')
-        
-    def chapter_title(self, title):
-        self.set_font('Sarabun', '', 12)
-        self.cell(0, 10, title, 0, 1, 'L')
-        self.ln(5)
-
-    def chapter_body(self, data):
-        self.set_font('Sarabun', '', 12)
-        for key, value in data.items():
-            self.multi_cell(0, 10, f'{key}: {value}')
-        self.ln()
-
-    def create_table(self, table_data, headers):
-        self.set_font('Sarabun', '', 10)
-        line_height = self.font_size * 2
-        col_width = self.epw / len(headers)
-
-        # Headers
-        for header in headers:
-            self.cell(col_width, line_height, header, border=1)
-        self.ln(line_height)
-
-        # Data
-        for row in table_data:
-            for item in row:
-                self.cell(col_width, line_height, str(item), border=1)
-            self.ln(line_height)
-        self.ln(line_height)
-
-def generate_receipt_pdf(sale):
+def get_google_credentials():
     """
-    สร้างไฟล์ PDF สำหรับใบเสร็จรับเงิน
+    Gets valid user credentials from storage or initiates the OAuth2 flow.
+    This function is designed to be run from a script, not a web server.
     """
-    pdf = PDF()
-    pdf.set_auto_page_break(auto=True, margin=15)
-    pdf.add_page()
-
-    # ข้อมูลผู้ขาย (ควรดึงมาจาก Settings ในอนาคต)
-    seller_info = {
-        "บริษัท": "Comphone Integrated System",
-        "ที่อยู่": "123 ถนนตัวอย่าง, กรุงเทพฯ 10110",
-        "เลขประจำตัวผู้เสียภาษี": "0123456789012"
-    }
-    pdf.chapter_body(seller_info)
-
-    # ข้อมูลการขายและลูกค้า
-    customer_name = sale.customer.name if sale.customer else "ลูกค้าทั่วไป"
-    sale_info = {
-        "เลขที่ใบเสร็จ": sale.sale_number,
-        "วันที่": sale.created_at.strftime('%d/%m/%Y %H:%M'),
-        "ลูกค้า": customer_name,
-        "พนักงานขาย": sale.salesperson.full_name
-    }
-    pdf.chapter_body(sale_info)
-
-    # ตารางรายการสินค้า
-    headers = ['#', 'รายการ', 'จำนวน', 'ราคา/หน่วย', 'ราคารวม']
-    table_data = []
-    for i, item in enumerate(sale.items):
-        row = [
-            i + 1,
-            item.product.name,
-            item.quantity,
-            f"{item.price_per_unit:,.2f}",
-            f"{(item.quantity * item.price_per_unit):,.2f}"
-        ]
-        table_data.append(row)
+    creds = None
+    if os.path.exists(TOKEN_FILE):
+        creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
     
-    pdf.create_table(table_data, headers)
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            try:
+                creds.refresh(Request())
+            except Exception as e:
+                current_app.logger.error(f"Error refreshing Google token: {e}")
+                creds = None # Force re-authentication
+        
+        if not creds: # Re-authenticate if refresh fails or no token exists
+            if not os.path.exists(CREDENTIALS_FILE):
+                raise FileNotFoundError(
+                    f"'{CREDENTIALS_FILE}' not found. "
+                    "Please download it from Google Cloud Console and place it in the root directory."
+                )
+            flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
+            creds = flow.run_local_server(port=0)
+        
+        # Save the credentials for the next run
+        with open(TOKEN_FILE, 'w') as token:
+            token.write(creds.to_json())
+            
+    return creds
 
-    # สรุปยอด
-    summary_data = {
-        "ยอดรวม (บาท)": f"{sale.total_amount:,.2f}"
-    }
-    pdf.chapter_body(summary_data)
+def get_google_service(api_name, api_version):
+    """Builds and returns a Google API service object."""
+    try:
+        creds = get_google_credentials()
+        service = build(api_name, api_version, credentials=creds)
+        return service
+    except Exception as e:
+        current_app.logger.error(f"Failed to build Google service '{api_name}': {e}")
+        return None
 
-    return pdf.output(dest='S').encode('latin-1')
+# --- You can add more utility functions here in the future ---

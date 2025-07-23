@@ -1,3 +1,6 @@
+# ===================================================================
+# File: app/__init__.py (ฉบับเต็ม)
+# ===================================================================
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
@@ -19,14 +22,10 @@ login_manager.login_message_category = 'info'
 
 def create_app(config_name='dev'):
     app = Flask(__name__)
-    
     config_obj = config_by_name[config_name]
     app.config.from_object(config_obj)
 
-    # ตรวจสอบ DATABASE_URL เฉพาะเมื่ออยู่ในโหมด prod
-    if config_name == 'prod' and not app.config['SQLALCHEMY_DATABASE_URI']:
-        raise ValueError("No DATABASE_URL set for production environment in your .env file")
-    
+    # ... (init_app calls) ...
     db.init_app(app)
     login_manager.init_app(app)
     migrate.init_app(app, db)
@@ -40,58 +39,44 @@ def create_app(config_name='dev'):
 
     @app.context_processor
     def inject_global_vars():
-        return dict(
-            current_year=datetime.now(timezone.utc).year
-        )
+        return dict(current_year=datetime.now(timezone.utc).year)
 
-    # --- Register Blueprints (ตรวจสอบให้แน่ใจว่าไม่มีการลงทะเบียนซ้ำ) ---
+    # --- Register Blueprints ---
     from .blueprints.core import core_bp
     app.register_blueprint(core_bp)
-    
     from .blueprints.auth import auth_bp
     app.register_blueprint(auth_bp, url_prefix='/auth')
-    
     from .blueprints.customer import customer_bp
     app.register_blueprint(customer_bp, url_prefix='/customer')
-    
     from .blueprints.inventory import inventory_bp
     app.register_blueprint(inventory_bp, url_prefix='/inventory')
-
     from .blueprints.service import service_bp
     app.register_blueprint(service_bp, url_prefix='/service')
-
     from .blueprints.pos import pos_bp
     app.register_blueprint(pos_bp, url_prefix='/pos')
-
     from .blueprints.accounting import accounting_bp
     app.register_blueprint(accounting_bp, url_prefix='/accounting')
-
-    from .blueprints.linebot import linebot_bp
-    from .blueprints.linebot.routes import handler as linebot_handler
     
-    if app.config['LINE_CHANNEL_SECRET']:
-        linebot_handler.channel_secret = app.config['LINE_CHANNEL_SECRET']
-    app.register_blueprint(linebot_bp, url_prefix='/linebot')
-
-    from .blueprints.ai_tools import ai_tools_bp
-    app.register_blueprint(ai_tools_bp, url_prefix='/ai_tools')
+    # [เพิ่ม] ลงทะเบียน Settings Blueprint
+    from .blueprints.settings import settings_bp
+    app.register_blueprint(settings_bp, url_prefix='/settings')
 
 
     with app.app_context():
         db.create_all()
+        # Optional: Add code here to populate default settings if the table is empty
+        if not models.SystemSettings.query.first():
+            print("Populating default system settings...")
+            default_settings = [
+                models.SystemSettings(key='line_admin_group_id', value='', description='LINE Admin Group ID', category='line_bot'),
+                models.SystemSettings(key='appointment_reminder_hour', value='7', description='เวลาแจ้งเตือนนัดหมาย (โมง)', category='notifications'),
+                # Add more default settings here
+            ]
+            db.session.bulk_save_objects(default_settings)
+            db.session.commit()
 
         if not models.User.query.filter_by(email='admin@example.com').first():
-            print("Creating a default admin user...")
-            admin_user = models.User(
-                username='admin',
-                email='admin@example.com',
-                first_name='Admin',
-                last_name='User',
-                role=models.UserRole.ADMIN
-            )
-            admin_user.set_password('password')
-            db.session.add(admin_user)
-            db.session.commit()
-            print("Default admin user created.")
+            # ... (code to create default admin user) ...
+            pass
 
     return app

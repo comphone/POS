@@ -1,220 +1,101 @@
 {% extends "base.html" %}
 
-{% block title %}รายละเอียดงานซ่อม #{{ job.job_number }}{% endblock %}
+{% block title %}จัดการงาน: {{ job.title }}{% endblock %}
+
+{% block head_extra %}
+<style>
+    .info-hero-card { background: linear-gradient(135deg, #0d6efd, #0a58ca); color: white; }
+    .info-hero-card .list-group-item { background-color: transparent; border-color: rgba(255,255,255,0.2); color: white; }
+    .info-label { font-size: 0.85em; opacity: 0.8; }
+    .info-value { font-size: 1.1em; font-weight: 600; }
+    .action-card { display: none; } /* Hide action cards by default */
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">รายละเอียดงานซ่อม #{{ job.job_number }}</h1>
-    <div>
-        <a href="{{ url_for('service.edit_job', job_id=job.id) }}" class="btn btn-warning"><i class="fas fa-edit"></i> แก้ไขใบงาน</a>
-        <a href="{{ url_for('service.list_jobs') }}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> กลับไปหน้ารายการ</a>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2">📝 จัดการงาน #{{ job.job_number }}</h1>
+    <a href="{{ url_for('service.list_jobs') }}" class="btn btn-secondary"><i class="fas fa-arrow-left me-2"></i>กลับหน้ารายการ</a>
+</div>
+
+<div class="card shadow-lg mb-4 info-hero-card">
+    </div>
+
+<div class="card shadow-sm mb-4" id="chooseActionCard">
+    <div class="card-body text-center p-4">
+        <h5 class="card-title mb-3">เลือกการกระทำสำหรับงานนี้</h5>
+         <div class="d-grid gap-3 d-md-flex justify-content-md-center">
+            <button type="button" onclick="showActionCard('completeJobCard')" class="btn btn-success btn-lg px-4"><i class="fas fa-check-circle me-2"></i>ปิดงาน</button>
+            <button type="button" onclick="showActionCard('rescheduleCard')" class="btn btn-warning btn-lg px-4"><i class="fas fa-calendar-alt me-2"></i>เลื่อนนัด</button>
+            <a href="{{ url_for('service.generate_customer_onboarding_qr', job_id=job.id) }}" class="btn btn-info btn-lg px-4" target="_blank"><i class="fas fa-qrcode me-2"></i>QR Code</a>
+        </div>
     </div>
 </div>
+
+<div class="card shadow-sm action-card mt-4" id="completeJobCard">
+    <div class="card-header"><h5 class="mb-0">บันทึกรายงานสรุปเพื่อปิดงาน</h5></div>
+    <div class="card-body">
+        <form method="POST">
+            {{ complete_form.csrf_token }}
+            <input type="hidden" name="action" value="submit_complete">
+            {{ complete_form.summary.label(class="form-label") }}
+            {{ complete_form.summary(class="form-control") }}
+            {{ complete_form.technicians(class="form-control") }} 
+            <hr>
+            {{ complete_form.submit_complete(class="btn btn-success") }}
+            <button type="button" class="btn btn-secondary ms-2" onclick="showActionCard('chooseActionCard')">ยกเลิก</button>
+        </form>
+    </div>
+</div>
+
+<div class="card shadow-sm action-card mt-4" id="rescheduleCard">
+    <div class="card-header"><h5 class="mb-0">เลื่อนนัดหมาย</h5></div>
+    <div class="card-body">
+        <form method="POST">
+            {{ reschedule_form.csrf_token }}
+            <input type="hidden" name="action" value="submit_reschedule">
+            {{ reschedule_form.reschedule_due.label(class="form-label") }}
+            {{ reschedule_form.reschedule_due(class="form-control") }}
+            {{ reschedule_form.reschedule_reason.label(class="form-label") }}
+            {{ reschedule_form.reschedule_reason(class="form-control") }}
+            {{ reschedule_form.technicians(class="form-control") }}
+            <hr>
+            {{ reschedule_form.submit_reschedule(class="btn btn-warning") }}
+            <button type="button" class="btn btn-secondary ms-2" onclick="showActionCard('chooseActionCard')">ยกเลิก</button>
+        </form>
+    </div>
+</div>
+
 
 <div class="row">
     <div class="col-lg-7">
-        <div class="card mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>ข้อมูลใบงาน</h5>
-                <span class="badge bg-info fs-6">{{ job.status.value }}</span>
-            </div>
-            <div class="card-body">
-                <h4 class="card-title">{{ job.title }}</h4>
-                <p><strong>ลูกค้า:</strong> {{ job.customer.name }} ({{ job.customer.phone or '-' }})</p>
-                <p><strong>ปัญหาที่ลูกค้าแจ้ง:</strong></p>
-                <p class="ms-3" style="white-space: pre-wrap;">{{ job.problem_description }}</p>
-            </div>
         </div>
-
-        <div class="card mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="fas fa-robot me-2"></i>AI Service Summary</h5>
-                <button id="ai-summary-btn" class="btn btn-sm btn-outline-primary">
-                    <i class="fas fa-magic-sparkles"></i> สรุปด้วย AI
-                </button>
-            </div>
-            <div class="card-body">
-                <div id="ai-summary-result">
-                    <p class="text-muted text-center">คลิกปุ่ม "สรุปด้วย AI" เพื่อดูสรุปประวัติงานซ่อมนี้</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="card mb-4">
-            <div class="card-header"><h5 class="mb-0"><i class="fas fa-tasks me-2"></i>งานย่อย (Tasks)</h5></div>
-            <div class="card-body">
-                <form method="POST" class="mb-3">
-                    {{ task_form.csrf_token }}
-                    <div class="input-group">
-                        {{ task_form.title(class="form-control") }}
-                        {{ task_form.submit_task(class="btn btn-outline-primary") }}
-                    </div>
-                </form>
-                <ul class="list-group">
-                    {% for task in job.tasks %}
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <form action="{{ url_for('service.toggle_task', task_id=task.id) }}" method="POST" class="d-inline me-2">
-                           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                           <input class="form-check-input" type="checkbox" {% if task.is_completed %}checked{% endif %} onchange="this.form.submit()">
-                        </form>
-                        <span class="flex-grow-1 {% if task.is_completed %}text-decoration-line-through text-muted{% endif %}">
-                            {{ task.title }}
-                        </span>
-                        <form action="{{ url_for('service.delete_task', task_id=task.id) }}" method="POST" onsubmit="return confirm('คุณต้องการลบงานย่อยนี้ใช่หรือไม่?');">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                            <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
-                        </form>
-                    </li>
-                    {% else %}
-                    <li class="list-group-item text-center text-muted">ยังไม่มีงานย่อย</li>
-                    {% endfor %}
-                </ul>
-            </div>
-        </div>
-
-        <div class="card mb-4">
-            <div class="card-header"><h5 class="mb-0"><i class="fas fa-cogs me-2"></i>อะไหล่ที่ใช้</h5></div>
-            <div class="card-body">
-                 <form method="POST" class="mb-3">
-                    {{ part_form.csrf_token }}
-                    <div class="row g-2">
-                        <div class="col-sm-7">{{ part_form.product(class="form-select") }}</div>
-                        <div class="col-sm-3">{{ part_form.quantity(class="form-control") }}</div>
-                        <div class="col-sm-2 d-grid">{{ part_form.submit_part(class="btn btn-outline-success") }}</div>
-                    </div>
-                </form>
-                <ul class="list-group">
-                    {% for part in job.parts_used %}
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        {{ part.product.name }}
-                        <span class="badge bg-light text-dark">จำนวน: {{ part.quantity }}</span>
-                        <form action="{{ url_for('service.delete_part', part_id=part.id) }}" method="POST" onsubmit="return confirm('คุณต้องการลบรายการอะไหล่นี้ และคืนสต็อกใช่หรือไม่?');">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                            <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
-                        </form>
-                    </li>
-                    {% else %}
-                    <li class="list-group-item text-center text-muted">ยังไม่มีการบันทึกการใช้อะไหล่</li>
-                    {% endfor %}
-                </ul>
-            </div>
-        </div>
-    </div>
-
     <div class="col-lg-5">
-        <div class="card mb-4">
-            <div class="card-header"><h5 class="mb-0"><i class="fas fa-history me-2"></i>ประวัติและความคืบหน้า</h5></div>
-            <div class="card-body">
-                <form method="POST">
-                    {{ update_form.csrf_token }}
-                    <div class="mb-3">{{ update_form.summary(class="form-control") }}</div>
-                    <div class="d-grid">{{ update_form.submit_update(class="btn btn-primary") }}</div>
-                </form>
+        <div class="card shadow-sm">
+             <div class="card-header"><h5 class="mb-0">ประวัติงาน / เพิ่มความคืบหน้า</h5></div>
+             <div class="card-body">
                 <hr>
-                {% for update in job.updates %}
-                <div class="d-flex mb-3">
-                    <div class="flex-shrink-0 me-3"><i class="fas fa-user-circle fa-2x text-muted"></i></div>
-                    <div class="flex-grow-1">
-                        <div class="fw-bold">{{ update.author.full_name }}</div>
-                        <div style="white-space: pre-wrap;">{{ update.summary }}</div>
-                        <small class="text-muted">{{ update.created_at.strftime('%d %b %Y, %H:%M') }}</small>
-                    </div>
                 </div>
-                {% else %}
-                <p class="text-center text-muted">ยังไม่มีการอัปเดต</p>
-                {% endfor %}
-            </div>
         </div>
     </div>
 </div>
+
 {% endblock %}
 
 {% block scripts_extra %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const aiSummaryBtn = document.getElementById('ai-summary-btn');
-    const aiSummaryResult = document.getElementById('ai-summary-result');
-    const jobId = {{ job.id }};
-
-    aiSummaryBtn.addEventListener('click', async function() {
-        // 1. Show loading state
-        aiSummaryBtn.disabled = true;
-        aiSummaryResult.innerHTML = `
-            <div class="d-flex align-items-center justify-content-center">
-                <div class="spinner-border spinner-border-sm me-2" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-                <strong>AI กำลังอ่านและสรุปข้อมูล...</strong>
-            </div>
-        `;
-
-        try {
-            // 2. Fetch job history from our own backend API
-            const response = await fetch(`/ai_tools/get_job_history/${jobId}`);
-            if (!response.ok) {
-                throw new Error('ไม่สามารถดึงข้อมูลประวัติงานซ่อมได้');
-            }
-            const data = await response.json();
-
-            // 3. Construct the prompt for Gemini API
-            const prompt = \`
-                คุณคือผู้ช่วยผู้จัดการร้านซ่อมมือถือและคอมพิวเตอร์ที่เชี่ยวชาญ
-                โปรดอ่านข้อมูลงานซ่อมต่อไปนี้ แล้วสรุปใจความสำคัญให้กระชับและเข้าใจง่ายที่สุดเป็นภาษาไทย
-                โดยเน้นที่ลำดับเหตุการณ์, ปัญหาที่พบ, และการแก้ไขล่าสุด
-
-                ข้อมูลงานซ่อม:
-                ชื่องาน: \${data.job_title}
-                ปัญหาที่ลูกค้าแจ้ง: \${data.problem_description}
-                
-                ประวัติการทำงาน:
-                \${data.history}
-
-                สรุป:
-            \`;
-
-            // 4. Call the Gemini API
-            // **สำคัญ:** คุณจะต้องสร้าง API Key ของคุณเองจาก Google AI Studio
-            // และนำมาใส่ใน Environment Variable บนเซิร์ฟเวอร์ของคุณ
-            const apiKey = "{{ current_app.config.get('GEMINI_API_KEY') or '' }}"; 
-            if (!apiKey) {
-                throw new Error('ยังไม่ได้ตั้งค่า GEMINI_API_KEY');
-            }
-            const apiUrl = \`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=\${apiKey}\`;
-            
-            const payload = {
-                contents: [{ parts: [{ text: prompt }] }]
-            };
-
-            const geminiResponse = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!geminiResponse.ok) {
-                 const errorBody = await geminiResponse.json();
-                 console.error('Gemini API Error:', errorBody);
-                throw new Error('เกิดข้อผิดพลาดในการเรียกใช้ AI');
-            }
-
-            const result = await geminiResponse.json();
-            
-            // 5. Display the result
-            if (result.candidates && result.candidates.length > 0) {
-                const summaryText = result.candidates[0].content.parts[0].text;
-                aiSummaryResult.innerHTML = summaryText.replace(/\\n/g, '<br>');
-            } else {
-                throw new Error('AI ไม่สามารถสร้างสรุปได้ในขณะนี้');
-            }
-
-        } catch (error) {
-            aiSummaryResult.innerHTML = \`<p class="text-danger text-center">\${error.message}</p>\`;
-        } finally {
-            // 6. Re-enable the button
-            aiSummaryBtn.disabled = false;
+    function showActionCard(cardIdToShow) {
+        document.querySelectorAll('.action-card').forEach(card => card.style.display = 'none');
+        document.getElementById('chooseActionCard').style.display = 'none';
+        
+        const cardToShow = document.getElementById(cardIdToShow);
+        if (cardToShow) {
+            cardToShow.style.display = 'block';
+        } else {
+            // If hiding, show the main choice card again
+            document.getElementById('chooseActionCard').style.display = 'block';
         }
-    });
-});
+    }
 </script>
 {% endblock %}
 
