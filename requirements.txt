@@ -10,3 +10,7 @@ line-bot-sdk
 gunicorn
 psycopg2-binary
 fpdf2
+apscheduler
+pandas
+openpyxl
+qrcode[pil]
