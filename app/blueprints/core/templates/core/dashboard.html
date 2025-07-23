@@ -2,69 +2,112 @@
 
 {% block title %}Dashboard{% endblock %}
 
+{% block head_extra %}
+<style>
+    .summary-card {
+        color: white;
+        border-radius: .75rem;
+        transition: transform 0.2s, box-shadow 0.2s;
+        display: flex;
+        align-items: center;
+        padding: 1rem 1.25rem;
+    }
+    .summary-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+    }
+    .summary-card .icon { font-size: 2rem; }
+    .summary-card .text-content { margin-left: 1rem; }
+    .summary-card .card-title { font-size: 1rem; margin-bottom: 0; }
+    .summary-card .card-text { font-size: 2rem; font-weight: bold; }
+</style>
+{% endblock %}
+
+
 {% block content %}
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
         <h1 class="h2">Dashboard</h1>
-        <div class="btn-toolbar mb-2 mb-md-0">
-            <div class="btn-group me-2">
-                <button type="button" class="btn btn-sm btn-outline-secondary">Share</button>
-                <button type="button" class="btn btn-sm btn-outline-secondary">Export</button>
-            </div>
-            <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle">
-                <i class="fas fa-calendar-alt"></i>
-                This week
-            </button>
-        </div>
     </div>
 
-    <div class="alert alert-success" role="alert">
-        <h4 class="alert-heading">ยินดีต้อนรับ!</h4>
-        <p>สวัสดี, <strong>{{ current_user.email }}</strong>! คุณได้เข้าสู่ระบบ Comphone Integrated System เรียบร้อยแล้ว</p>
-        <hr>
-        <p class="mb-0">นี่คือหน้า Dashboard หลักของระบบ ที่จะแสดงข้อมูลสรุปภาพรวมทั้งหมด</p>
-    </div>
-
-    <!-- Cards for Stats -->
     <div class="row">
-        <div class="col-md-3 mb-3">
-            <div class="card text-white bg-primary">
-                <div class="card-body">
-                    <h5 class="card-title"><i class="fas fa-tools"></i> งานที่กำลังทำ</h5>
-                    <p class="card-text fs-4">12</p>
+        <div class="col-lg-3 col-6 mb-4">
+            <div class="summary-card bg-primary h-100">
+                <div class="icon"><i class="fas fa-tools"></i></div>
+                <div class="text-content">
+                    <h5 class="card-title">งานที่กำลังทำ</h5>
+                    <p class="card-text mb-0">{{ stats.pending or 0 }}</p>
                 </div>
             </div>
         </div>
-        <div class="col-md-3 mb-3">
-            <div class="card text-white bg-warning">
-                <div class="card-body">
-                    <h5 class="card-title"><i class="fas fa-clock"></i> งานที่ต้องทำวันนี้</h5>
-                    <p class="card-text fs-4">3</p>
+        <div class="col-lg-3 col-6 mb-4">
+            <div class="summary-card bg-warning h-100">
+                <div class="icon"><i class="fas fa-clock"></i></div>
+                <div class="text-content">
+                    <h5 class="card-title">งานที่ต้องทำวันนี้</h5>
+                    <p class="card-text mb-0">{{ stats.today or 0 }}</p>
                 </div>
             </div>
         </div>
-        <div class="col-md-3 mb-3">
-            <div class="card text-white bg-success">
-                <div class="card-body">
-                    <h5 class="card-title"><i class="fas fa-check-circle"></i> งานที่เสร็จแล้ว (เดือนนี้)</h5>
-                    <p class="card-text fs-4">45</p>
+        <div class="col-lg-3 col-6 mb-4">
+            <div class="summary-card bg-success h-100">
+                <div class="icon"><i class="fas fa-check-circle"></i></div>
+                <div class="text-content">
+                    <h5 class="card-title">งานที่เสร็จแล้ว</h5>
+                    <p class="card-text mb-0">{{ stats.completed or 0 }}</p>
                 </div>
             </div>
         </div>
-        <div class="col-md-3 mb-3">
-            <div class="card text-white bg-danger">
-                <div class="card-body">
-                    <h5 class="card-title"><i class="fas fa-exclamation-triangle"></i> งานค้าง</h5>
-                    <p class="card-text fs-4">2</p>
+        <div class="col-lg-3 col-6 mb-4">
+            <div class="summary-card bg-secondary h-100">
+                <div class="icon"><i class="fas fa-globe-asia"></i></div>
+                <div class="text-content">
+                    <h5 class="card-title">งานทั้งหมด</h5>
+                    <p class="card-text mb-0">{{ stats.total or 0 }}</p>
                 </div>
             </div>
         </div>
     </div>
     
-    <div class="row mt-4">
-        <div class="col">
-            <h2>ตารางงานล่าสุด</h2>
-            <p>ส่วนนี้จะแสดงตารางงานล่าสุด (ยังไม่เสร็จสมบูรณ์)</p>
+    <div class="card shadow-sm mt-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-history me-2"></i>ตารางงานล่าสุด</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Job No.</th>
+                            <th>ชื่องาน</th>
+                            <th>ลูกค้า</th>
+                            <th>สถานะ</th>
+                            <th>วันที่สร้าง</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for job in recent_jobs %}
+                        <tr>
+                            <td>{{ job.job_number }}</td>
+                            <td>{{ job.title }}</td>
+                            <td>{{ job.customer.name }}</td>
+                            <td><span class="badge bg-info">{{ job.status.value }}</span></td>
+                            <td>{{ job.created_at.strftime('%d/%m/%Y') }}</td>
+                            <td>
+                                <a href="{{ url_for('service.job_detail', job_id=job.id) }}" class="btn btn-sm btn-outline-primary">
+                                    ดูรายละเอียด
+                                </a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center">ยังไม่มีงานในระบบ</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 

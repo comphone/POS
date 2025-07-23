@@ -1,12 +1,10 @@
-# ===================================================================
-# File: app/__init__.py (ฉบับเต็ม)
-# ===================================================================
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
 from datetime import datetime, timezone
+from apscheduler.schedulers.background import BackgroundScheduler
 
 from config import config_by_name
 
@@ -14,6 +12,7 @@ db = SQLAlchemy()
 login_manager = LoginManager()
 migrate = Migrate()
 csrf = CSRFProtect()
+scheduler = BackgroundScheduler(daemon=True)
 
 login_manager.login_view = 'auth.login'
 login_manager.login_message = 'กรุณาเข้าสู่ระบบเพื่อเข้าถึงหน้านี้'
@@ -25,7 +24,6 @@ def create_app(config_name='dev'):
     config_obj = config_by_name[config_name]
     app.config.from_object(config_obj)
 
-    # ... (init_app calls) ...
     db.init_app(app)
     login_manager.init_app(app)
     migrate.init_app(app, db)
@@ -46,6 +44,7 @@ def create_app(config_name='dev'):
     app.register_blueprint(core_bp)
     from .blueprints.auth import auth_bp
     app.register_blueprint(auth_bp, url_prefix='/auth')
+    # ... (register customer, inventory, service, pos, accounting) ...
     from .blueprints.customer import customer_bp
     app.register_blueprint(customer_bp, url_prefix='/customer')
     from .blueprints.inventory import inventory_bp
@@ -56,24 +55,24 @@ def create_app(config_name='dev'):
     app.register_blueprint(pos_bp, url_prefix='/pos')
     from .blueprints.accounting import accounting_bp
     app.register_blueprint(accounting_bp, url_prefix='/accounting')
-    
-    # [เพิ่ม] ลงทะเบียน Settings Blueprint
+
     from .blueprints.settings import settings_bp
     app.register_blueprint(settings_bp, url_prefix='/settings')
+    
+    # [เพิ่ม] ลงทะเบียน Technician Report Blueprint
+    from .blueprints.tech_report import tech_report_bp
+    app.register_blueprint(tech_report_bp, url_prefix='/tech_report')
 
 
     with app.app_context():
         db.create_all()
-        # Optional: Add code here to populate default settings if the table is empty
-        if not models.SystemSettings.query.first():
-            print("Populating default system settings...")
-            default_settings = [
-                models.SystemSettings(key='line_admin_group_id', value='', description='LINE Admin Group ID', category='line_bot'),
-                models.SystemSettings(key='appointment_reminder_hour', value='7', description='เวลาแจ้งเตือนนัดหมาย (โมง)', category='notifications'),
-                # Add more default settings here
-            ]
-            db.session.bulk_save_objects(default_settings)
-            db.session.commit()
+        
+        # [เพิ่ม] เริ่มการทำงานของ Scheduler
+        if not scheduler.running:
+            # ที่นี่คือที่ที่เราจะเพิ่ม Scheduled Jobs ต่างๆ ในอนาคต
+            # scheduler.add_job(...)
+            scheduler.start()
+            print("Scheduler started.")
 
         if not models.User.query.filter_by(email='admin@example.com').first():
             # ... (code to create default admin user) ...
