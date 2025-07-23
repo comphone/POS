@@ -14,3 +14,7 @@ apscheduler
 pandas
 openpyxl
 qrcode[pil]
+# เพิ่ม Google API Libraries
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
